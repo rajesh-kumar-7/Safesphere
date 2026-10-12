@@ -1,5 +1,8 @@
 
-import { useState } from "react";
+
+
+
+import { useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -9,35 +12,28 @@ import {
 import "leaflet/dist/leaflet.css";
 import "./App.css";
 
-const reports = [
-  {
-    id: 1,
-    position: [29.6857, 76.9905],
-    level: "high",
-    label: "High reported risk",
-  },
-  {
-    id: 2,
-    position: [29.692, 76.982],
-    level: "medium",
-    label: "Moderate reported risk",
-  },
-  {
-    id: 3,
-    position: [29.678, 77.001],
-    level: "low",
-    label: "Low reported risk",
-  },
-];
-
 const colors = {
   high: "#ef4444",
   medium: "#eab308",
   low: "#22c55e",
 };
 
+
 export default function App() {
-  const [showNotice, setShowNotice] = useState(false);
+  const [reports, setReports] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("http://localhost:5000/api/reports")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Could not load reports");
+        }
+        return response.json();
+      })
+      .then((data) => setReports(data))
+      .catch(() => setError("Could not connect to the backend."));
+  }, []);
 
   return (
     <div className="app">
@@ -46,41 +42,43 @@ export default function App() {
           <h1>SafeSphere</h1>
           <p>Community-powered safety intelligence</p>
         </div>
-        <span className="status">● Demo Mode</span>
+        <span className="status">● Connected API</span>
       </header>
 
       <main className="dashboard">
         <section className="map-section">
           <h2>Safety Map</h2>
           <p className="subtitle">
-            Explore reported safety concerns in your area.
+            Explore community-reported safety concerns.
           </p>
+
+          {error && <p>{error}</p>}
 
           <div className="map">
             <MapContainer
               center={[29.6857, 76.9905]}
               zoom={14}
-              scrollWheelZoom={true}
+              scrollWheelZoom
               style={{ height: "100%", width: "100%" }}
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                attribution='&copy; OpenStreetMap contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
 
               {reports.map((report) => (
                 <CircleMarker
                   key={report.id}
-                  center={report.position}
+                  center={[report.latitude, report.longitude]}
                   radius={13}
                   pathOptions={{
-                    color: colors[report.level],
-                    fillColor: colors[report.level],
+                    color: colors[report.severity] || colors.medium,
+                    fillColor: colors[report.severity] || colors.medium,
                     fillOpacity: 0.65,
                   }}
                 >
                   <Popup>
-                    {report.label} (sample data)
+                    {report.category} — {report.severity} reported risk
                   </Popup>
                 </CircleMarker>
               ))}
@@ -88,7 +86,7 @@ export default function App() {
           </div>
 
           <div className="legend">
-            <span>🔴 High reported risk</span>
+            <span>🔴 High</span>
             <span>🟡 Moderate</span>
             <span>🟢 Low</span>
           </div>
@@ -99,30 +97,19 @@ export default function App() {
 
           <div className="stat">
             <span>Total reports</span>
-            <strong>3</strong>
+            <strong>{reports.length}</strong>
           </div>
 
           <div className="stat">
             <span>High-risk reports</span>
-            <strong className="red">1</strong>
+            <strong className="red">
+              {reports.filter((r) => r.severity === "high").length}
+            </strong>
           </div>
 
-          <button onClick={() => setShowNotice(true)}>
-            + Report a Concern
-          </button>
-
-          {showNotice && (
-            <p className="notice">
-              Camera and location reporting will be added next.
-              <button onClick={() => setShowNotice(false)}>
-                Close
-              </button>
-            </p>
-          )}
-
           <p className="note">
-            Demo data only. Map colors represent reported concerns,
-            not confirmed danger.
+            Report data is for demonstration. Reported risk does not confirm
+            that a location is dangerous.
           </p>
         </aside>
       </main>
