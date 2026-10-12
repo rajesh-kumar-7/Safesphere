@@ -48,12 +48,30 @@ function LocateUser({ onLocationFound }) {
 
   return null;
 }
+
+
+
+function MapSearchController({ target }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (target) {
+      map.flyTo(target, 15, { duration: 1.5 });
+    }
+  }, [target, map]);
+
+  return null;
+}
 export default function App() {
   const [reports, setReports] = useState([]);
   const [error, setError] = useState("");
   const [showReportForm, setShowReportForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [userLocation, setUserLocation] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+const [searchTarget, setSearchTarget] = useState(null);
+const [searchError, setSearchError] = useState("");
+const [searching, setSearching] = useState(false);
   useEffect(() => {
     fetch("http://localhost:5000/api/reports")
       .then((response) => {
@@ -71,6 +89,58 @@ export default function App() {
       });
   }, [refreshKey]);
 
+async function handleSearch(event) {
+  event.preventDefault();
+
+  const query = searchQuery.trim();
+
+  if (!query) {
+    setSearchError("Please enter an area or city.");
+    return;
+  }
+
+  setSearching(true);
+  setSearchError("");
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error("Location search is temporarily unavailable.");
+    }
+
+    const results = await response.json();
+
+    if (results.length === 0) {
+      setSearchError("Location not found. Try another search.");
+      return;
+    }
+
+    setSearchTarget([
+      Number(results[0].lat),
+      Number(results[0].lon),
+    ]);
+  } catch (error) {
+    setSearchError(
+      error.message || "Could not search for this location."
+    );
+  } finally {
+    setSearching(false);
+  }
+}
+function goToMyLocation() {
+  if (!userLocation) {
+    setSearchError(
+      "Your location is not available. Please allow location permission."
+    );
+    return;
+  }
+
+  setSearchError("");
+  setSearchTarget([...userLocation]);
+}
   return (
     <div className="app">
       <header className="header">
@@ -87,6 +157,66 @@ export default function App() {
           <p className="subtitle">
             Explore community-reported safety concerns.
           </p>
+          
+<form
+  onSubmit={handleSearch}
+  style={{
+    display: "flex",
+    gap: "8px",
+    marginBottom: "12px",
+  }}
+>
+  <input
+    type="text"
+    value={searchQuery}
+    onChange={(event) => setSearchQuery(event.target.value)}
+    placeholder="Search area, city or landmark..."
+    aria-label="Search for a location"
+    style={{
+      flex: 1,
+      minWidth: 0,
+      padding: "12px",
+      border: "1px solid #cbd5e1",
+      borderRadius: "8px",
+    }}
+  />
+
+  <button
+    type="submit"
+    disabled={searching}
+    style={{
+      padding: "12px 18px",
+      border: "none",
+      borderRadius: "8px",
+      background: "#2563eb",
+      color: "white",
+      cursor: "pointer",
+    }}
+  >
+    {searching ? "Searching..." : "Search"}
+  </button>
+  <button
+  type="button"
+  onClick={goToMyLocation}
+  style={{
+    padding: "12px",
+    border: "none",
+    borderRadius: "8px",
+    background: "#16a34a",
+    color: "white",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  }}
+>
+  📍 My Location
+</button>
+</form>
+
+{searchError && (
+  <p role="alert" style={{ color: "#dc2626" }}>
+    {searchError}
+  </p>
+)}
 
           {error && <p>{error}</p>}
 
@@ -101,6 +231,7 @@ export default function App() {
                 attribution="&copy; OpenStreetMap contributors"
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+              <MapSearchController target={searchTarget} />
               <LocateUser onLocationFound={setUserLocation} />
 
               {userLocation && (
