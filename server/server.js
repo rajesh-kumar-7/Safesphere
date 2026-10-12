@@ -20,17 +20,20 @@ app.get("/api/reports", async (req, res) => {
   try {
     const reports = await Report.find().sort({ createdAt: -1 });
 
-    res.json(
-      reports.map((report) => ({
-        id: report._id,
-        category: report.category,
-        severity: report.severity,
-        latitude: report.location.latitude,
-        longitude: report.location.longitude,
-        imageUrl: report.imageUrl,
-        verificationStatus: report.verificationStatus,
-      }))
-    );
+   
+res.json(
+  reports.map((report) => ({
+    id: report._id,
+    category: report.category,
+    severity: report.severity,
+    description: report.description,
+    latitude: report.location.latitude,
+    longitude: report.location.longitude,
+    imageUrl: report.imageUrl,
+    verificationStatus: report.verificationStatus,
+    createdAt: report.createdAt,
+  }))
+);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch reports" });
   }

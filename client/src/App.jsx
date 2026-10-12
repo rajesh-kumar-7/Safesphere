@@ -1,13 +1,11 @@
-
-
-
-
+import ReportForm from "./ReportForm";
 import { useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
   CircleMarker,
   Popup,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
@@ -18,11 +16,44 @@ const colors = {
   low: "#22c55e",
 };
 
+function LocateUser({ onLocationFound }) {
+  const map = useMap();
 
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+  (position) => {
+    const { latitude, longitude, accuracy } = position.coords;
+
+    console.log("Latitude:", latitude);
+    console.log("Longitude:", longitude);
+    console.log("Accuracy in metres:", accuracy);
+
+    const coords = [latitude, longitude];
+
+    onLocationFound(coords);
+    map.flyTo(coords, 18);
+  },
+  (error) => {
+    console.error("Location error:", error.message);
+  },
+  {
+    enableHighAccuracy: true,
+    timeout: 20000,
+    maximumAge: 0,
+  }
+);
+  }, [map, onLocationFound]);
+
+  return null;
+}
 export default function App() {
   const [reports, setReports] = useState([]);
   const [error, setError] = useState("");
-
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [userLocation, setUserLocation] = useState(null);
   useEffect(() => {
     fetch("http://localhost:5000/api/reports")
       .then((response) => {
@@ -31,9 +62,14 @@ export default function App() {
         }
         return response.json();
       })
-      .then((data) => setReports(data))
-      .catch(() => setError("Could not connect to the backend."));
-  }, []);
+      .then((data) => {
+        setReports(data);
+        setError("");
+      })
+      .catch(() => {
+        setError("Could not connect to the backend.");
+      });
+  }, [refreshKey]);
 
   return (
     <div className="app">
@@ -62,9 +98,25 @@ export default function App() {
               style={{ height: "100%", width: "100%" }}
             >
               <TileLayer
-                attribution='&copy; OpenStreetMap contributors'
+                attribution="&copy; OpenStreetMap contributors"
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+              <LocateUser onLocationFound={setUserLocation} />
+
+              {userLocation && (
+                <CircleMarker
+                  center={userLocation}
+                  radius={8}
+                  pathOptions={{
+                    color: "#ffffff",
+                    fillColor: "#2563eb",
+                    fillOpacity: 1,
+                    weight: 3,
+                  }}
+                >
+                  <Popup>You are here</Popup>
+                </CircleMarker>
+              )}
 
               {reports.map((report) => (
                 <CircleMarker
@@ -77,8 +129,42 @@ export default function App() {
                     fillOpacity: 0.65,
                   }}
                 >
-                  <Popup>
-                    {report.category} — {report.severity} reported risk
+                  <Popup minWidth={220} maxWidth={280}>
+                    <div className="report-popup">
+                      <h3>{report.category}</h3>
+
+                      <p>
+                        <strong>Severity:</strong> {report.severity}
+                      </p>
+
+                      <p>
+                        <strong>Description:</strong>{" "}
+                        {report.description?.trim() ||
+                          "No description provided."}
+                      </p>
+
+                      {report.imageUrl ? (
+                        <img
+                          src={report.imageUrl}
+                          alt="Reported incident"
+                          className="report-popup-image"
+                        />
+                      ) : (
+                        <p>No photo uploaded for this report.</p>
+                      )}
+
+                      <p>
+                        <strong>Status:</strong>{" "}
+                        {report.verificationStatus || "pending"}
+                      </p>
+
+                      {report.createdAt && (
+                        <p>
+                          <strong>Reported:</strong>{" "}
+                          {new Date(report.createdAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
                   </Popup>
                 </CircleMarker>
               ))}
@@ -94,6 +180,20 @@ export default function App() {
 
         <aside className="sidebar">
           <h2>Safety Overview</h2>
+
+          <button
+            className="report-button"
+            onClick={() => setShowReportForm(true)}
+          >
+            + Report a Concern
+          </button>
+
+          {showReportForm && (
+            <ReportForm
+              onReportCreated={() => setRefreshKey((key) => key + 1)}
+              onClose={() => setShowReportForm(false)}
+            />
+          )}
 
           <div className="stat">
             <span>Total reports</span>
