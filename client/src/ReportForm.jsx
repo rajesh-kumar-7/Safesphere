@@ -76,48 +76,63 @@ export default function ReportForm({ onReportCreated, onClose }) {
     );
   }
 
-  async function submitReport(event) {
-    event.preventDefault();
+ 
+async function submitReport(event) {
+  event.preventDefault();
 
-    if (!photo || !location) {
-      setMessage("Capture a photo and get your location first.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    try {
-      const response = await fetch(`${API_URL}/api/reports`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category,
-          severity,
-          description,
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Report submission failed.");
-      }
-
-      setMessage(`Report saved! ID: ${data.id}`);
-      setPhoto("");
-      setLocation(null);
-      setDescription("");
-
-      onReportCreated?.();
-    } catch (error) {
-      setMessage(error.message || "Could not connect to the backend.");
-    } finally {
-      setLoading(false);
-    }
+  if (!photo || !location) {
+    setMessage("Capture a photo and get your location first.");
+    return;
   }
+
+  setLoading(true);
+  setMessage("Uploading photo...");
+
+  try {
+    // Upload photo to Cloudinary
+    const uploadResponse = await fetch(`${API_URL}/api/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photo }),
+    });
+
+    const uploadData = await uploadResponse.json();
+
+    if (!uploadResponse.ok) {
+      throw new Error(uploadData.message || "Photo upload failed.");
+    }
+
+    // Save report with the image URL
+    const response = await fetch(`${API_URL}/api/reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        category,
+        severity,
+        description,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        imageUrl: uploadData.imageUrl,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Report submission failed.");
+    }
+
+    setMessage("Report and photo saved successfully!");
+    setPhoto("");
+    setLocation(null);
+    setDescription("");
+    onReportCreated?.();
+  } catch (error) {
+    setMessage(error.message || "Could not connect to the backend.");
+  } finally {
+    setLoading(false);
+  }
+}
 
   function stopCamera() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
