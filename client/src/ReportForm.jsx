@@ -10,6 +10,7 @@ export default function ReportForm({ onReportCreated, onClose }) {
   const [photo, setPhoto] = useState("");
   const [location, setLocation] = useState(null);
   const [category, setCategory] = useState("Suspicious activity");
+  const [customCategory, setCustomCategory] = useState("");
   const [severity, setSeverity] = useState("medium");
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
@@ -79,6 +80,13 @@ export default function ReportForm({ onReportCreated, onClose }) {
  
 async function submitReport(event) {
   event.preventDefault();
+  const finalCategory =
+  category === "Other" ? customCategory.trim() : category;
+
+if (!finalCategory) {
+  setMessage("Please enter your incident category.");
+  return;
+}
 
   if (!photo || !location) {
     setMessage("Capture a photo and get your location first.");
@@ -107,7 +115,7 @@ async function submitReport(event) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        category,
+        category:finalCategory,
         severity,
         description,
         latitude: location.latitude,
@@ -150,14 +158,41 @@ async function submitReport(event) {
         <button type="button" onClick={onClose}>Close</button>
       </div>
 
-      <label>Incident category</label>
-      <select value={category} onChange={(e) => setCategory(e.target.value)}>
-        <option>Suspicious activity</option>
-        <option>Road hazard</option>
-        <option>Broken streetlight</option>
-        <option>Public safety concern</option>
-        <option>Other</option>
-      </select>
+<label>Incident category</label>
+
+<select
+  value={category}
+  onChange={(e) => {
+    setCategory(e.target.value);
+    if (e.target.value !== "Other") {
+      setCustomCategory("");
+    }
+  }}
+>
+  <option value="Suspicious activity">Suspicious activity</option>
+  <option value="Theft or robbery">Theft or robbery</option>
+  <option value="Vandalism">Vandalism or property damage</option>
+  <option value="Harassment">Harassment or threatening behavior</option>
+  <option value="Violence">Violence or physical assault</option>
+  <option value="Suspicious object">Abandoned or suspicious object</option>
+  <option value="Road hazard">Road hazard or accident</option>
+  <option value="Broken streetlight">Broken streetlight</option>
+  <option value="Fire or smoke">Fire or smoke</option>
+  <option value="Public safety concern">Public safety concern</option>
+  <option value="Other">Other</option>
+</select>
+
+{category === "Other" && (
+  <input
+    type="text"
+    value={customCategory}
+    onChange={(e) => setCustomCategory(e.target.value)}
+    placeholder="Enter your incident category"
+    maxLength={100}
+    required
+  />
+)}
+
 
       <label>Reported severity</label>
       <select value={severity} onChange={(e) => setSeverity(e.target.value)}>
