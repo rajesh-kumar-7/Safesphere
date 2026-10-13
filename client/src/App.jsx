@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import SafetyMap from "./components/SafetyMap";
 import SafetyOverview from "./components/SafetyOverview";
 import { fetchReports } from "../services/reportService";
+import AdminDashboard from "./AdminDashboard";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import "./App.css";
 
-export default function App() {
+function HomePage() {
   const [reports, setReports] = useState([]);
   const [error, setError] = useState("");
   const [showReportForm, setShowReportForm] = useState(false);
@@ -54,6 +56,16 @@ export default function App() {
         />
       </main>
     </div>
+  );
+}
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
