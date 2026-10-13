@@ -10,7 +10,14 @@ const uploadRoutes = require("./routes/uploadRoutes");
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      process.env.CLIENT_URL,
+    ].filter(Boolean),
+  })
+);
 app.use(express.json({ limit: "10mb" }));
 
 // Health check
